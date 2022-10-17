@@ -1,0 +1,17 @@
+﻿@page "/LindNotifyAuthorize"
+@*@inject IHttpContextAccessor _httpContextAccessor*@
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = Uri.EscapeUriString(
+                _authorizeUrl + "?" +
+                "response_type=code" +
+                "&client_id=" + _clientId +
+                "&redirect_uri=" + _redirectUri +
+                "&scope=notify" +
+                "&state=" + _state
+            );
+        //_httpContextAccessor.HttpContext.Response.Redirect("https://www.google.com");
+    }
+}
