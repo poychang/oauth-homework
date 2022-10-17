@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
     <PropertyGroup>
         <TargetFramework>net7.0</TargetFramework>
@@ -15,5 +15,17 @@
     <ItemGroup>
         <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
     </ItemGroup>
+
+    <Target Name="CopyContentToGitHubPageFolder" AfterTargets="AfterPublish">
+        <ItemGroup>
+            <DocsFolder Include="..\docs\**\*.*" />
+            <PublishFolder Include="$(OutDir)browser-wasm\publish\wwwroot\**\*.*" />
+        </ItemGroup>
+        <Message Importance="high" Text="Delete files in docs folder"></Message>
+        <Delete Files="@(DocsFolder)"></Delete>
+        <Message Importance="high" Text="Copy files to docs folder:"></Message>
+        <Message Importance="high" Text="@(PublishFolder)->%(Filename)"></Message>
+        <Copy SourceFiles="@(PublishFolder)" DestinationFolder="..\docs\%(RecursiveDir)" />
+    </Target>
 
 </Project>
