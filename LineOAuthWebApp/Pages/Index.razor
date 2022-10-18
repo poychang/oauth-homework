@@ -2,22 +2,24 @@
 @using System.Text.Json
 @using LineOAuthWebApp.Models
 @using System.Net.Http.Headers
+@using LineOAuthWebApp.Services;
 @inject IJSRuntime JS
 @inject IHttpClientFactory httpClientFactory
+@inject LineLoginService lineLoginService
 
-<div class="text-center">
-    @if (user is null)
+<div class="text-center p-10">
+    @if (User is null)
     {
-        <h1 class="display-4">Welcome</h1>
+        <h1 class="display-4">OAuth Homework</h1>
         <p>
-            <a href="@LineLoginUrl()">LINE Login</a>
+            <a href="@lineLoginService.LineLoginUrl(clientId,redirectUri, Guid.NewGuid().ToString())">LINE Login</a>
         </p>
     }
     else
     {
-        <p><img src="@user.PictureUrl" width="128" height="128" /></p>
-        <h1 class="display-4">Hi, @user.DisplayName</h1>
-        <h2>@user.Sub</h2>
+        <p><img src="@User.PictureUrl" width="128" height="128" /></p>
+        <h1 class="display-4">Hi, @User.DisplayName</h1>
+        <h2>@User.Sub</h2>
 
         @if (IsLineNotifyBinded)
         {
@@ -27,83 +29,40 @@
         {
             <a class="btn btn-success">訂閱 Line Notify 通知</a>
         }
-        <a class="btn btn-danger" @onclick="@RevokeAccessTokenAsync">登出</a>
+        <a class="btn btn-danger" @onclick="@Logout">登出</a>
 
-        <pre><code>@JsonSerializer.Serialize(user, new JsonSerializerOptions { WriteIndented = true })</code></pre>
+        <pre class="text-left"><code>@JsonSerializer.Serialize(User, new JsonSerializerOptions { WriteIndented = true })</code></pre>
     }
 </div>
 
 @code {
     [Parameter]
     [SupplyParameterFromQuery(Name = "code")]
-    public string OAuthcode { get; set; }
+    public string OAuthcode { get; set; } = string.Empty;
 
-    private LineUserProfile user;
+    private LineUserProfile User;
     private bool IsLineNotifyBinded;
-
-    protected override async Task OnInitializedAsync()
-    {
-        if (!string.IsNullOrEmpty(OAuthcode)) await JS.InvokeVoidAsync("localStorage.setItem", "LineLoginAccessToken", await FetchLineLoginAccessTokenAsync(OAuthcode));
-
-        var lineLoginAccessToken = await JS.InvokeAsync<string>("localStorage.getItem", "LineLoginAccessToken");
-        if (!string.IsNullOrEmpty(lineLoginAccessToken)) user = await FetchLineUserProfileAsync(lineLoginAccessToken);
-    }
-
     private string clientId = "1657569063";
     private string clientSecret = "16aaf2ce72d3f63df9cfa67905b9a4d5";
     private string redirectUri = "https://poychang.github.io/oauth-homework/";
+    private string accesstoken = string.Empty;
 
-    public string LineLoginUrl()
+    protected override async Task OnInitializedAsync()
     {
-        var state = "state";
-        var url = $"https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id={clientId}&redirect_uri={redirectUri}&state={state}&scope=openid%20profile";
-        return url;
+        if (!string.IsNullOrEmpty(OAuthcode))
+        {
+            accesstoken = await lineLoginService.FetchLineLoginAccessTokenAsync(OAuthcode, clientId, clientSecret, redirectUri);
+            await JS.InvokeVoidAsync("localStorage.setItem", "LineLoginAccessToken", accesstoken);
+        }
+
+        accesstoken = await JS.InvokeAsync<string>("localStorage.getItem", "LineLoginAccessToken");
+        if (!string.IsNullOrEmpty(accesstoken)) User = await lineLoginService.FetchLineUserProfileAsync(accesstoken);
     }
 
-    public async Task<string> FetchLineLoginAccessTokenAsync(string code)
+    public async Task Logout()
     {
-        var httpClient = httpClientFactory.CreateClient("LineLoginClient");
-        var endpoint = "https://api.line.me/oauth2/v2.1/token";
-        var response = await httpClient.PostAsync(endpoint, new FormUrlEncodedContent(new Dictionary<string, string>
-            {
-                { "grant_type", "authorization_code" },
-                { "code", code },
-                { "client_id", clientId },
-                { "client_secret", clientSecret },
-                { "redirect_uri", redirectUri }
-            }));
-        response.EnsureSuccessStatusCode();
-        var responseStream = await response.Content.ReadAsStreamAsync();
-
-        return JsonSerializer.Deserialize<LineLoginAccessToken>(responseStream).AccessToken;
-    }
-
-    public async Task<LineUserProfile> FetchLineUserProfileAsync(string accessToken)
-    {
-        var httpClient = httpClientFactory.CreateClient("LineLoginClient");
-        var endpoint = "https://api.line.me/v2/profile";
-        var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        var response = await httpClient.SendAsync(request);
-        response.EnsureSuccessStatusCode();
-        var responseStream = await response.Content.ReadAsStreamAsync();
-
-        return JsonSerializer.Deserialize<LineUserProfile>(responseStream);
-    }
-
-    public async Task RevokeAccessTokenAsync()
-    {
-        var lineLoginAccessToken = await JS.InvokeAsync<string>("localStorage.getItem", "LineLoginAccessToken");
-        var httpClient = httpClientFactory.CreateClient("LineLoginClient");
-        var endpoint = "https://api.line.me/oauth2/v2.1/revoke";
-        var response = await httpClient.PostAsync(endpoint, new FormUrlEncodedContent(new Dictionary<string, string>
-            {
-                { "access_token", lineLoginAccessToken },
-                { "client_id", clientId },
-                { "client_secret", clientSecret }
-            }));
-        response.EnsureSuccessStatusCode();
-
+        var accesstoken = await JS.InvokeAsync<string>("localStorage.getItem", "LineLoginAccessToken");
+        await lineLoginService.RevokeAccessTokenAsync(accesstoken, clientId, clientSecret);
         await JS.InvokeVoidAsync("localStorage.removeItem", "LineLoginAccessToken");
     }
 }
