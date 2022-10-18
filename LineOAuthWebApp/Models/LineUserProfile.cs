@@ -5,8 +5,8 @@ namespace LineOAuthWebApp.Models
     public class LineUserProfile
     {
 
-        [JsonPropertyName("sub")]
-        public string Sub { get; set; } = string.Empty;
+        [JsonPropertyName("userId")]
+        public string UserId { get; set; } = string.Empty;
 
         [JsonPropertyName("displayName")]
         public string DisplayName { get; set; } = string.Empty;

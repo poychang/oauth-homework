@@ -4,10 +4,10 @@
 @using System.Net.Http.Headers
 @using LineOAuthWebApp.Services;
 @inject IJSRuntime JS
-@inject IHttpClientFactory httpClientFactory
+@inject NavigationManager _navigationManager
 @inject LineLoginService lineLoginService
 
-<div class="text-center p-10">
+<div class="container pt-10">
     @if (User is null)
     {
         <h1 class="display-4">OAuth Homework</h1>
@@ -19,7 +19,7 @@
     {
         <p><img src="@User.PictureUrl" width="128" height="128" /></p>
         <h1 class="display-4">Hi, @User.DisplayName</h1>
-        <h2>@User.Sub</h2>
+        <h2>@User.UserId</h2>
 
         @if (IsLineNotifyBinded)
         {
@@ -40,7 +40,7 @@
     [SupplyParameterFromQuery(Name = "code")]
     public string OAuthcode { get; set; } = string.Empty;
 
-    private LineUserProfile User;
+    private LineUserProfile User = default!;
     private bool IsLineNotifyBinded;
     private string clientId = "1657569063";
     private string clientSecret = "16aaf2ce72d3f63df9cfa67905b9a4d5";
@@ -62,7 +62,10 @@
     public async Task Logout()
     {
         var accesstoken = await JS.InvokeAsync<string>("localStorage.getItem", "LineLoginAccessToken");
-        await lineLoginService.RevokeAccessTokenAsync(accesstoken, clientId, clientSecret);
-        await JS.InvokeVoidAsync("localStorage.removeItem", "LineLoginAccessToken");
+        await lineLoginService.RevokeAccessTokenAsync(accesstoken, clientId, clientSecret, async () =>
+        {
+            await JS.InvokeVoidAsync("localStorage.removeItem", "LineLoginAccessToken");
+            _navigationManager.NavigateTo("/");
+        });
     }
 }

@@ -11,5 +11,6 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<LineLoginService>();
+builder.Services.AddSingleton<LineNotifyService>();
 
 await builder.Build().RunAsync();
