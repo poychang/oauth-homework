@@ -38,7 +38,7 @@ namespace LineOAuthWebApp.Services
             response.EnsureSuccessStatusCode();
             var responseStream = await response.Content.ReadAsStreamAsync();
 
-            return JsonSerializer.Deserialize<LineLoginAccessToken>(responseStream)?.AccessToken;
+            return JsonSerializer.Deserialize<LineLoginAccessToken>(responseStream)?.AccessToken ?? string.Empty;
         }
 
         public async Task<LineUserProfile> FetchLineUserProfileAsync(string accessToken)
